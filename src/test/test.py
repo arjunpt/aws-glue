@@ -54,6 +54,9 @@ def test_etl_logic(spark_session, tmp_path):
 
     # Patch AWS Glue components
     with patch("awsglue.utils.getResolvedOptions", return_value=args):
+        # Mock sys.argv to avoid GlueArgumentError when calling getResolvedOptions
+        sys.argv = ['etl.py', '--JOB_NAME', 'test_job', '--S3_INPUT_PATH', str(input_path), '--S3_OUTPUT_PATH', str(output_path), '--COLUMN_TO_DROP', column_to_drop]
+
         # Import and run your script
         main()  # Execute the ETL script
 
