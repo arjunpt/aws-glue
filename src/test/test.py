@@ -46,8 +46,8 @@ def test_etl_logic(spark_session, tmp_path):
 
     # Patch AWS Glue components
     with patch("awsglue.utils.getResolvedOptions", return_value=args):
-        # Import and run your script (replace 'etl_script' with your script file name)
-        from etl_script import main  # Replace 'etl_script' with your actual script file name
+        # Import and run your script (replace 'etl' with your script file name)
+        from src.etl import main  # Replace 'src.etl' with your actual script location
         main()  # Execute the ETL script
 
     # Verify the output
