@@ -47,7 +47,7 @@ jobs:
 
     - name: Test with pytest
       run: |
-        pip install aws-glue-libs
+        pip3 install git+https://github.com/awslabs/aws-glue-libs.git
         pytest src/test/test.py
 
 # Security source code Scan Stage
