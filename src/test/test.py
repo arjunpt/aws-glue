@@ -1,6 +1,13 @@
-import pytest
+import sys
+import os
 from pyspark.sql import SparkSession
 from unittest.mock import patch, MagicMock
+
+# Add the 'src' directory to the sys.path so that the test file can import from 'src'
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Now you can import 'etl' from the 'src' directory
+from src.etl import main  # Ensure this points to the right location
 
 @pytest.fixture(scope="session")
 def spark_session():
@@ -46,8 +53,7 @@ def test_etl_logic(spark_session, tmp_path):
 
     # Patch AWS Glue components
     with patch("awsglue.utils.getResolvedOptions", return_value=args):
-        # Import and run your script (replace 'etl' with your script file name)
-        from src.etl import main  # Replace 'src.etl' with your actual script location
+        # Import and run your script
         main()  # Execute the ETL script
 
     # Verify the output
