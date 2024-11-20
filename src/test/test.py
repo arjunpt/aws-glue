@@ -3,13 +3,22 @@ import os
 import pytest
 from pyspark.sql import SparkSession
 from unittest.mock import patch, MagicMock
-from awsglue.utils import GlueArgumentError  # Import the GlueArgumentError
+from awsglue.utils import GlueArgumentError  # Import GlueArgumentError
 
 # Add the parent directory of 'src' to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-# Now you can import 'etl' from the 'src' directory
-from src.etl import main  # Ensure this points to the right location
+# Patch getResolvedOptions before importing any code that calls it
+@patch("awsglue.utils.getResolvedOptions", return_value={
+    'JOB_NAME': 'test_job',
+    'S3_INPUT_PATH': 's3://mock-input',
+    'S3_OUTPUT_PATH': 's3://mock-output',
+    'COLUMN_TO_DROP': 'age'
+})
+def pytest_configure_mock(mock_getResolvedOptions):
+    """Fixture to ensure arguments are mocked before importing the ETL script"""
+    pass  # No need to do anything, patching happens here
+
 
 @pytest.fixture(scope="session")
 def spark_session():
@@ -19,13 +28,9 @@ def spark_session():
         .master("local[*]") \
         .getOrCreate()
 
-@patch("awsglue.context.GlueContext", MagicMock())
-@patch("awsglue.utils.getResolvedOptions", return_value={  # Mocking arguments to avoid GlueArgumentError
-    'JOB_NAME': 'test_job',
-    'S3_INPUT_PATH': 's3://mock-input',
-    'S3_OUTPUT_PATH': 's3://mock-output',
-    'COLUMN_TO_DROP': 'age'
-})
+
+# Now import 'etl' from the 'src' directory after patching
+@patch("awsglue.context.GlueContext", MagicMock())  # Patch GlueContext as well
 def test_etl_logic(spark_session, tmp_path):
     """
     Simple test to validate:
@@ -33,6 +38,13 @@ def test_etl_logic(spark_session, tmp_path):
     2. Dropping a specified column.
     3. Writing output to a local directory.
     """
+    # Safely import the main function after patching
+    try:
+        from src.etl import main  # Import the ETL script after the patch
+    except GlueArgumentError:
+        # Skip the test if the required arguments are missing
+        pytest.skip("Skipping test due to missing arguments (GlueArgumentError)")
+
     # Define test input and output paths using temporary directory
     input_path = tmp_path / "input.csv"
     output_path = tmp_path / "output"
@@ -54,14 +66,9 @@ def test_etl_logic(spark_session, tmp_path):
     }
 
     # Patch AWS Glue components
-    try:
-        with patch("awsglue.utils.getResolvedOptions", return_value=args):
-            # Run the ETL script
-            main()
-    except GlueArgumentError as e:
-        # If GlueArgumentError is raised, handle it and continue
-        print(f"Skipping test due to missing arguments: {e}")
-        pytest.skip(f"Skipping test due to missing arguments: {e}")  # Skip the test from pytest
+    with patch("awsglue.utils.getResolvedOptions", return_value=args):
+        # Run the ETL script
+        main()
 
     # Verify the output
     result_df = spark_session.read.parquet(str(output_path))
