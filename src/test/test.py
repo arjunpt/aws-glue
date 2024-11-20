@@ -1,6 +1,6 @@
 import pytest
 from pyspark.sql import SparkSession
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 @pytest.fixture(scope="session")
 def spark_session():
@@ -10,6 +10,13 @@ def spark_session():
         .master("local[*]") \
         .getOrCreate()
 
+@patch("awsglue.context.GlueContext", MagicMock())
+@patch("awsglue.utils.getResolvedOptions", return_value={
+    'JOB_NAME': 'test_job',
+    'S3_INPUT_PATH': 's3://mock-input',
+    'S3_OUTPUT_PATH': 's3://mock-output',
+    'COLUMN_TO_DROP': 'age'
+})
 def test_etl_logic(spark_session, tmp_path):
     """
     Simple test to validate:
@@ -17,7 +24,7 @@ def test_etl_logic(spark_session, tmp_path):
     2. Dropping a specified column.
     3. Writing output to a local directory.
     """
-    # Define test input and output paths
+    # Define test input and output paths using temporary directory
     input_path = tmp_path / "input.csv"
     output_path = tmp_path / "output"
     column_to_drop = "age"
@@ -39,9 +46,9 @@ def test_etl_logic(spark_session, tmp_path):
 
     # Patch AWS Glue components
     with patch("awsglue.utils.getResolvedOptions", return_value=args):
-        # Import and run your script (replace 'script_name' with your script file name)
-        from script_name import main
-        main()
+        # Import and run your script (replace 'etl_script' with your script file name)
+        from etl_script import main  # Replace 'etl_script' with your actual script file name
+        main()  # Execute the ETL script
 
     # Verify the output
     result_df = spark_session.read.parquet(str(output_path))
@@ -54,4 +61,5 @@ def test_etl_logic(spark_session, tmp_path):
         {"name": "Charlie", "city": "Chicago"}
     ]
 
+    # Check if the output data matches the expected data
     assert result_data == expected_data
