@@ -124,6 +124,16 @@ jobs:
 
     - name: Wait for Glue Job to Complete
       run: |
-        JOB_RUN_ID=$(aws glue start-job-run --job-name customer-data --query 'JobRunId' --output text)
-        echo "JobRunId: $JOB_RUN_ID"
-        aws glue get-job-run --job-name customer-data --run-id $JOB_RUN_ID --query 'JobRun.JobRunState'
+        echo "Waiting for Glue job to complete..."
+        while true; do
+          JOB_STATUS=$(aws glue get-job-run --job-name customer-data --run-id ${{ env.JOB_RUN_ID }} --query 'JobRun.JobRunState' --output text)
+          echo "Job status: $JOB_STATUS"
+          if [[ "$JOB_STATUS" == "SUCCEEDED" ]]; then
+            echo "Glue job completed successfully."
+            break
+          elif [[ "$JOB_STATUS" == "FAILED" || "$JOB_STATUS" == "STOPPED" ]]; then
+            echo "Glue job failed or was stopped."
+            exit 1
+          fi
+          sleep 30
+        done
