@@ -117,10 +117,15 @@ jobs:
         aws s3 cp src/etl.py s3://glue-dac/etl-scripts/
 
     - name: Trigger Glue Job
+      id: trigger-glue-job
       run: |
-        aws glue start-job-run \
+        echo "Starting Glue Job..."
+        JOB_RUN_ID=$(aws glue start-job-run \
           --job-name customer-data \
-          --arguments '{"--SCRIPT_LOCATION":"s3://glue-dac/etl-scripts/", "--S3_INPUT_PATH":"s3://glue-dac/source/customers/", "--S3_OUTPUT_PATH":"s3://glue-dac/target/customers/" , "----COLUMN_TO_DROP":"Email"}'
+          --arguments '{"--SCRIPT_LOCATION":"s3://glue-dac/etl-scripts/", "--S3_INPUT_PATH":"s3://glue-dac/source/customers/", "--S3_OUTPUT_PATH":"s3://glue-dac/target/customers/", "--COLUMN_TO_DROP":"Email"}' \
+          --query 'JobRunId' --output text)
+        echo "JOB_RUN_ID=$JOB_RUN_ID" >> $GITHUB_ENV
+        echo "Glue Job Run ID: $JOB_RUN_ID"
 
     - name: Wait for Glue Job to Complete
       run: |
@@ -137,3 +142,4 @@ jobs:
           fi
           sleep 30
         done
+
